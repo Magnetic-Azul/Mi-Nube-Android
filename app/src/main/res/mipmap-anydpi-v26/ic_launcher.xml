@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icono adaptativo (Android 8+): el lanzador recorta la forma sin encoger el logo en un círculo blanco -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/icono_fondo" />
+    <foreground android:drawable="@drawable/ic_launcher_nube" />
+    <monochrome android:drawable="@drawable/ic_launcher_nube" />
+</adaptive-icon>

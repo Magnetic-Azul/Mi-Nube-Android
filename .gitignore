@@ -1,0 +1,31 @@
+# --- Firma: la keystore y sus contraseñas NUNCA se suben ---
+*.jks
+*.keystore
+*.p12
+keystore.properties
+signing.properties
+
+# --- Configuración local (dirección del servidor, ruta del SDK) ---
+local.properties
+config.properties
+
+# --- Gradle / Android Studio ---
+.gradle/
+build/
+/app/build/
+/app/release/
+.idea/
+*.iml
+.kotlin/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# --- Sistema ---
+.DS_Store
+Thumbs.db
+
+# --- APK sueltos ---
+*.apk
+*.aab
+latest.json

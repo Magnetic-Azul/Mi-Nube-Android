@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Raíz a pantalla completa: solo recibe como padding los lados y el teclado; la web se dibuja bajo las barras
+     del sistema y la puerta y la tarjeta de compartir se apartan de ellas (ver MainActivity.aplicarInsets) -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/entrada_fondo">
+
+    <WebView
+        android:id="@+id/web"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="invisible" />
+
+    <!-- Puerta de conexión / diagnóstico -->
+    <ScrollView
+        android:id="@+id/gate"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/fondo"
+        android:fillViewport="true"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp">
+
+            <ImageView
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:contentDescription="@null"
+                android:src="@mipmap/ic_launcher" />
+
+            <TextView
+                android:id="@+id/gateTitulo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:gravity="center"
+                android:text="@string/gate_conectando"
+                android:textColor="@color/texto"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <ProgressBar
+                android:id="@+id/gateProgreso"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginTop="24dp" />
+
+            <TextView
+                android:id="@+id/gateMensaje"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:gravity="center"
+                android:lineSpacingMultiplier="1.15"
+                android:textColor="@color/texto_suave"
+                android:textSize="19sp"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/btnReintentar"
+                style="@style/MiNube.Boton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:text="@string/btn_reintentar"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/btnTailscale"
+                style="@style/MiNube.Boton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/btn_abrir_tailscale"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/btnActualizar"
+                style="@style/MiNube.BotonSecundario"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:text="@string/btn_buscar_actualizacion"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/gateVersion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textColor="@color/texto_suave"
+                android:textSize="14sp"
+                android:visibility="gone" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Conexión: el logo quieto en el centro (el mismo del splash); el indicador solo aparece si tarda.
+         Al terminar, el logo viaja hasta su sitio en la web y el fondo se funde (MainActivity.revelarWeb). -->
+    <FrameLayout
+        android:id="@+id/conexion"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <View
+            android:id="@+id/conexionFondo"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/entrada_fondo" />
+
+        <ImageView
+            android:id="@+id/conexionLogo"
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:layout_gravity="center"
+            android:contentDescription="@string/app_name"
+            android:src="@drawable/logo_nube" />
+
+        <ProgressBar
+            android:id="@+id/conexionSpinner"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_gravity="center"
+            android:alpha="0"
+            android:indeterminateTint="@color/entrada_texto"
+            android:translationY="92dp" />
+
+        <TextView
+            android:id="@+id/conexionTexto"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:alpha="0"
+            android:gravity="center"
+            android:paddingHorizontal="40dp"
+            android:text="@string/conectando_texto"
+            android:textColor="@color/entrada_texto"
+            android:textSize="16sp"
+            android:translationY="138dp" />
+    </FrameLayout>
+
+    <!-- Tarjeta flotante de lo compartido («Guardando 2 de 5…»), arriba para no tapar la navegación inferior de la web.
+         Su margen superior suma el alto de la barra de estado (MainActivity.aplicarInsets): nunca queda debajo de ella. -->
+    <TextView
+        android:id="@+id/shareBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:layout_margin="12dp"
+        android:background="@drawable/tarjeta_compartir"
+        android:elevation="8dp"
+        android:gravity="center"
+        android:minHeight="56dp"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="14dp"
+        android:textColor="#FFFFFF"
+        android:textSize="17sp"
+        android:visibility="gone" />
+
+    <!-- Vídeo a pantalla completa -->
+    <FrameLayout
+        android:id="@+id/fullscreen"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:visibility="gone" />
+</FrameLayout>

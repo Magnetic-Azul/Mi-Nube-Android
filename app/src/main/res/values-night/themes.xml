@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MiNube" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">@color/acento</item>
+        <item name="android:colorAccent">@color/acento</item>
+        <item name="android:windowBackground">@color/entrada_fondo</item>
+        <!-- Android 12+: splash con el logo pequeño centrado, igual que la pantalla de conexión (en versiones anteriores se ignora) -->
+        <item name="android:windowSplashScreenBackground">@color/entrada_fondo</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:alertDialogTheme">@style/MiNube.Dialogo</item>
+    </style>
+
+    <style name="MiNube.Dialogo" parent="@android:style/Theme.DeviceDefault.Dialog.Alert">
+        <item name="android:colorAccent">@color/acento</item>
+        <item name="android:textAppearanceMedium">@style/MiNube.DialogoTexto</item>
+        <item name="android:buttonBarButtonStyle">@style/MiNube.DialogoBoton</item>
+    </style>
+</resources>

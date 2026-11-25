@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Mi Nube</string>
+    <string name="conectando_texto">Conectando con tu nube…</string>
+    <string name="conectando_lento">Sigue conectando… Comprueba que Tailscale esté activo.</string>
+    <string name="share_label">Guardar en Mi Nube</string>
+
+    <!-- Puerta de conexión -->
+    <string name="gate_conectando">Conectando con Mi Nube…</string>
+    <string name="gate_titulo_error">No se puede abrir Mi Nube</string>
+    <string name="gate_sin_config">Esta versión de la app no tiene configurada la dirección del servidor. Avisa a Carlos.</string>
+    <string name="gate_sin_internet">El móvil no tiene conexión a internet.\n\nActiva el wifi o los datos móviles y pulsa «Reintentar».</string>
+    <string name="gate_tailscale_falta">Falta la app «Tailscale», que es la que conecta el móvil con la nube de casa.\n\nInstálala y vuelve aquí.</string>
+    <string name="gate_tailscale_apagado">Tailscale está apagado.\n\nPulsa «Abrir Tailscale», actívalo y vuelve aquí.</string>
+    <string name="gate_servidor">Tailscale está encendido, pero el ordenador de casa no contesta.\n\nPuede estar apagado o sin internet. Prueba de nuevo en un rato.</string>
+    <string name="btn_reintentar">Reintentar</string>
+    <string name="btn_abrir_tailscale">Abrir Tailscale</string>
+    <string name="btn_instalar_tailscale">Instalar Tailscale</string>
+    <string name="btn_buscar_actualizacion">Buscar actualización</string>
+    <string name="version_actual">Versión %1$s</string>
+
+    <!-- Compartir -->
+    <string name="share_nada">Solo se pueden guardar fotos, vídeos y archivos.</string>
+    <plurals name="share_preparando">
+        <item quantity="one">Preparando %1$d archivo para Mi Nube…</item>
+        <item quantity="other">Preparando %1$d archivos para Mi Nube…</item>
+    </plurals>
+    <plurals name="share_fallo_copia">
+        <item quantity="one">No se pudo leer %1$d archivo.</item>
+        <item quantity="other">No se pudieron leer %1$d archivos.</item>
+    </plurals>
+    <plurals name="share_entra">
+        <item quantity="one">Entra en tu carpeta para guardar %1$d archivo en «Recibidos».</item>
+        <item quantity="other">Entra en tu carpeta para guardar %1$d archivos en «Recibidos».</item>
+    </plurals>
+    <string name="share_subiendo">Guardando %1$d de %2$d en «Recibidos»…</string>
+    <string name="share_ok">✓ Guardado en la carpeta «Recibidos»</string>
+    <string name="share_error">No se pudieron guardar: %1$s</string>
+    <string name="notif_canal_subidas">Subidas a Mi Nube</string>
+    <string name="notif_subiendo">Guardando en Mi Nube</string>
+
+    <!-- Actualizaciones -->
+    <string name="notif_canal_actualizaciones">Actualizaciones de Mi Nube</string>
+    <string name="upd_titulo">Hay una versión nueva</string>
+    <string name="upd_mensaje">Hay una versión nueva de Mi Nube (%1$s).\n\n%2$s\n\n¿Actualizar ahora? Tarda menos de un minuto y no se pierde nada.</string>
+    <string name="upd_si">Actualizar</string>
+    <string name="upd_no">Más tarde</string>
+    <string name="upd_al_dia">Ya tienes la última versión (%1$s).</string>
+    <string name="upd_sin_conexion">No se pudo comprobar si hay actualizaciones. ¿Hay internet?</string>
+    <string name="upd_desactivado">Las actualizaciones automáticas no están activas en esta versión.</string>
+    <string name="upd_descargando">Descargando la actualización…</string>
+    <string name="upd_permiso_titulo">Un permiso, solo una vez</string>
+    <string name="upd_permiso">Para poder actualizarse sola, Mi Nube necesita el permiso «Instalar apps desconocidas».\n\nEn la pantalla siguiente activa el interruptor y vuelve atrás.</string>
+    <string name="upd_permiso_ir">Ir al permiso</string>
+    <string name="upd_fallo_descarga">No se pudo descargar la actualización. Inténtalo más tarde.</string>
+    <string name="upd_fallo_integridad">La actualización descargada está dañada. Inténtalo más tarde.</string>
+    <string name="upd_fallo_instalar">No se pudo instalar la actualización: %1$s</string>
+    <string name="upd_confirmar">Toca aquí para terminar de actualizar Mi Nube</string>
+
+    <string name="descargando">Descargando «%1$s»…</string>
+    <string name="descarga_fallo">No se pudo iniciar la descarga.</string>
+    <string name="abrir_enlace_fallo">No hay ninguna app para abrir este enlace.</string>
+</resources>

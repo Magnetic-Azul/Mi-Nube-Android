@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="acento">#2F6FDB</color>
+    <color name="fondo">#EBEBEB</color>   <!-- igual que el fondo de la web: la pantalla de conexión y la web no cambian de color -->
+    <!-- La pantalla de entrada de la web es SIEMPRE clara (aunque el sistema esté en oscuro): splash, conexión y logo también,
+         para que al entrar no se alternen los colores. -->
+    <color name="entrada_fondo">#EBEBEB</color>
+    <color name="entrada_texto">#5A5A5A</color>
+    <color name="logo_fondo">#161616</color>
+    <color name="logo_trazo">#FFFFFF</color>
+    <color name="texto">#1C1C1C</color>
+    <color name="texto_suave">#5A5A5A</color>
+    <color name="barra">#2F6FDB</color>
+    <!-- Fondo del icono adaptativo: el mismo gris casi negro del logo de la web (icon-192.png) -->
+    <color name="icono_fondo">#161616</color>
+</resources>

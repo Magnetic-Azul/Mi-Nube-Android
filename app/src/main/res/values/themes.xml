@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Sin AppCompat: tema Material del propio sistema -->
+    <style name="Theme.MiNube" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">@color/acento</item>
+        <item name="android:colorAccent">@color/acento</item>
+        <item name="android:windowBackground">@color/entrada_fondo</item>
+        <!-- Android 12+: splash con el logo pequeño centrado, igual que la pantalla de conexión (en versiones anteriores se ignora) -->
+        <item name="android:windowSplashScreenBackground">@color/entrada_fondo</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:alertDialogTheme">@style/MiNube.Dialogo</item>
+    </style>
+
+    <!-- Diálogos (actualización, permisos): botones sin MAYÚSCULAS y texto más grande. Sin AppCompat ni DayNight (API 29). -->
+    <style name="MiNube.Dialogo" parent="@android:style/Theme.DeviceDefault.Light.Dialog.Alert">
+        <item name="android:colorAccent">@color/acento</item>
+        <item name="android:textAppearanceMedium">@style/MiNube.DialogoTexto</item>
+        <item name="android:buttonBarButtonStyle">@style/MiNube.DialogoBoton</item>
+    </style>
+
+    <style name="MiNube.DialogoTexto" parent="@android:style/TextAppearance.DeviceDefault.Medium">
+        <item name="android:textSize">17sp</item>
+        <item name="android:lineSpacingMultiplier">1.15</item>
+    </style>
+
+    <style name="MiNube.DialogoBoton" parent="@android:style/Widget.DeviceDefault.Button.Borderless.Colored">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+
+    <style name="Theme.MiNube.Transparente" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+
+    <style name="MiNube.Boton" parent="android:Widget.Material.Button.Colored">
+        <item name="android:minHeight">56dp</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:layout_marginTop">12dp</item>
+    </style>
+
+    <style name="MiNube.BotonSecundario" parent="android:Widget.Material.Button.Borderless.Colored">
+        <item name="android:minHeight">56dp</item>
+        <item name="android:textSize">18sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:layout_marginTop">8dp</item>
+    </style>
+</resources>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icono del splash de Android 12+: el mismo logo, a 96 dp en el centro de un lienzo de 288 dp (el sistema recorta
+     un círculo de 192 dp: cabe de sobra). Así el logo del splash y el de la pantalla de conexión coinciden. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+    <group
+        android:translateX="96"
+        android:translateY="96">
+        <path
+            android:fillColor="@color/logo_fondo"
+            android:pathData="M30.5,0H65.5A30.5,30.5 0 0 1 96,30.5V65.5A30.5,30.5 0 0 1 65.5,96H30.5A30.5,30.5 0 0 1 0,65.5V30.5A30.5,30.5 0 0 1 30.5,0Z" />
+        <group
+            android:scaleX="2.18"
+            android:scaleY="2.18"
+            android:translateX="21.8"
+            android:translateY="21.8">
+            <path
+                android:fillColor="#00000000"
+                android:pathData="M7,18a4,4 0,0 1,-0.6,-7.96A5.5,5.5 0 0 1,17 8.5a4.5,4.5 0,0 1,0.5 9.5z"
+                android:strokeColor="@color/logo_trazo"
+                android:strokeLineCap="round"
+                android:strokeLineJoin="round"
+                android:strokeWidth="1.8" />
+        </group>
+    </group>
+</vector>
