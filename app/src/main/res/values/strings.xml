@@ -7,6 +7,7 @@
 
     <!-- Puerta de conexión -->
     <string name="btn_comprobando">Comprobando…</string>
+    <string name="gate_comprobando">Conectando con tu nube…\n\nPuede tardar unos segundos mientras Tailscale termina de conectar.</string>
     <string name="gate_titulo_error">No se puede abrir Mi Nube</string>
     <string name="gate_sin_config">Esta versión de la app no tiene configurada la dirección del servidor. Avisa a Carlos.</string>
     <string name="gate_sin_internet">El móvil no tiene conexión a internet.\n\nActiva el wifi o los datos móviles y pulsa «Reintentar».</string>

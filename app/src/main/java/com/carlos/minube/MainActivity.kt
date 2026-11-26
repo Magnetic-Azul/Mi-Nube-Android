@@ -93,7 +93,12 @@ class MainActivity : ComponentActivity(), MiNubeWebClient.Listener, MiNubeChrome
         private const val MARGEN_TUNEL_MS = 20_000L
         private val ESPERAS_TUNEL_MS = longArrayOf(500, 1000, 1500, 2000)
         private const val REINTENTOS_WEB = 2          // recargas automáticas si la web falla justo tras conectar
-        private const val ASENTAR_TRAS_ERROR_MS = 400L // pausa antes de la entrada animada si se llega desde un error
+        private const val ASENTAR_MAX_MS = 1_500L     // tope de espera a que la web esté quieta antes de la entrada animada tras un error
+
+        /** Marca window.__nubeQuieta cuando la web lleva ~12 fotogramas seguidos fluidos (sin tareas largas ocupando el hilo). */
+        private const val JS_QUIETA = """(function(){window.__nubeQuieta=false;var n=0,last=performance.now();
+function t(){var now=performance.now();if(now-last>40)n=0;else n++;last=now;if(n>=12){window.__nubeQuieta=true;return;}requestAnimationFrame(t);}
+requestAnimationFrame(t);})()"""
 
         /** Token y fuente: contrato window.MiNube (v6); si no existe, las variables globales de la v5. */
         private const val JS_SESION = """(function(){try{
@@ -468,6 +473,8 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
     private fun mostrarComprobando(activo: Boolean, puedeReintentar: Boolean = false) {
         if (conexionPanel.visibility != View.VISIBLE) return
         btnReintentar.setText(if (activo) R.string.btn_comprobando else R.string.btn_reintentar)
+        // Mientras comprueba, el mensaje de error anterior (p. ej. «Tailscale está apagado») ya no es cierto
+        if (activo) gateMensaje.setText(R.string.gate_comprobando)
         btnReintentar.isEnabled = !activo || puedeReintentar
         btnReintentar.alpha = if (activo) 0.85f else 1f
         reintentarSpinner.visibility = if (activo) View.VISIBLE else View.GONE
@@ -737,7 +744,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
                     // Llegando desde el error (túnel recién activado, red y WebView aún ocupados) se deja un momento
                     // para que el primer fotograma y las cargas pendientes no caigan a mitad de la animación
                     asentando = true
-                    web.postDelayed({ if (preparando) { preparando = false; revelarWeb() } }, ASENTAR_TRAS_ERROR_MS)
+                    esperarWebQuieta { if (preparando) { preparando = false; revelarWeb() } }
                 } else {
                     preparando = false; revelarWeb()
                 }
@@ -749,6 +756,21 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
                 override fun onComplete(requestId: Long) { web.removeCallbacks(listo); listo.run() }
             })
         }
+    }
+
+    /** Espera a que la web esté fluida (o, como mucho, ASENTAR_MAX_MS) antes de lanzar la entrada animada. */
+    private fun esperarWebQuieta(alTerminar: () -> Unit) {
+        val t0 = SystemClock.elapsedRealtime()
+        web.evaluateJavascript(JS_QUIETA, null)
+        lateinit var sondeo: Runnable
+        sondeo = Runnable {
+            if (!preparando) return@Runnable
+            web.evaluateJavascript("window.__nubeQuieta===true") { r ->
+                if (!preparando) return@evaluateJavascript
+                if (r == "true" || SystemClock.elapsedRealtime() - t0 > ASENTAR_MAX_MS) alTerminar() else web.postDelayed(sondeo, 80)
+            }
+        }
+        web.postDelayed(sondeo, 80)
     }
 
     /**
