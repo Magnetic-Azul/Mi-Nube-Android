@@ -282,7 +282,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
     override fun onStop() {
         // Nada de peticiones en segundo plano: si se sale de la app mientras reintenta, se corta y los botones quedan normales
         comprobando?.cancel(); comprobando = null
-        if (mostrandoError) mostrarComprobando(false)
+        mostrarComprobando(false)
         super.onStop()
     }
 
@@ -448,13 +448,20 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
                 intento++
             }
             desdeTailscale = false
-            if (e == Estado.OK) cargarWeb() else mostrarError(e)
+            if (e == Estado.OK) {
+                // El servidor responde: se deja de estar «en error» (si no, onPaginaTerminada no mostraría la web y la
+                // pantalla se quedaría en «Comprobando…»). El panel sigue a la vista hasta que la web esté lista.
+                mostrandoError = false
+                cargarWeb()
+            } else {
+                mostrarError(e)
+            }
         }
     }
 
     /** Botón «Reintentar» del panel de error: «Comprobando…» con indicador mientras hay una comprobación. */
     private fun mostrarComprobando(activo: Boolean, puedeReintentar: Boolean = false) {
-        if (!mostrandoError) return
+        if (conexionPanel.visibility != View.VISIBLE) return
         btnReintentar.setText(if (activo) R.string.btn_comprobando else R.string.btn_reintentar)
         btnReintentar.isEnabled = !activo || puedeReintentar
         btnReintentar.alpha = if (activo) 0.85f else 1f
