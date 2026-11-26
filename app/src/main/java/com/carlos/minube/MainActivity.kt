@@ -487,7 +487,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
         errorPrincipal = false
         // no-cache: revalida el HTML para ver al momento lo último subido al servidor (miniaturas, etc. siguen en caché)
         web.loadUrl("$serverUrl/", mapOf("Cache-Control" to "no-cache"))
-        if (conexion.visibility == View.VISIBLE) { web.alpha = 0.01f; web.visibility = View.VISIBLE }   // se calienta ya, tapada por la conexión
+        if (conexion.visibility == View.VISIBLE) { web.alpha = 1f; web.visibility = View.VISIBLE }   // se calienta ya, tapada por la conexión (opaca): sin alpha<1, que crearía una capa aparte
         timeoutCarga?.cancel()
         timeoutCarga = lifecycleScope.launch {
             delay(TIMEOUT_CARGA_MS)
@@ -734,7 +734,10 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
     private fun prepararYRevelar() {
         if (preparando || revelando) return
         preparando = true
-        web.alpha = 0.01f                       // casi invisible, pero el WebView sí compone
+        // Alpha 1, no 0,01: un View con alpha<1 se dibuja en una capa fuera de pantalla, y pasar a 1 al revelar la deshace y
+        // obliga al WebView a repintar justo cuando empieza el viaje del logo (era el tirón de ~60-100 ms). La web ya queda
+        // tapada por la pantalla de conexión, que es opaca, así que no hace falta que sea transparente.
+        web.alpha = 1f
         web.visibility = View.VISIBLE
         var asentando = false
         lateinit var listo: Runnable
