@@ -11,8 +11,10 @@ import java.net.URLDecoder
 object Downloads {
 
     /** Devuelve el nombre del archivo si la descarga se encoló, o null si falló. */
-    fun iniciar(ctx: Context, url: String, userAgent: String?, contentDisposition: String?, mime: String?): String? {
-        if (!url.startsWith("https://") && !url.startsWith("http://")) return null
+    fun iniciar(ctx: Context, url: String, userAgent: String?, contentDisposition: String?, mime: String?, serverHost: String?): String? {
+        // Solo https y solo del propio servidor: nunca descargas de otros sitios ni sin cifrar
+        val u = Uri.parse(url)
+        if (u.scheme != "https" || serverHost == null || !u.host.equals(serverHost, ignoreCase = true)) return null
         val nombre = nombreArchivo(url, contentDisposition, mime)
         return try {
             val req = DownloadManager.Request(Uri.parse(url))

@@ -16,6 +16,9 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Entorno con aprobación manual: Settings → Environments → release → Required reviewers (tú).
+    # Mueve allí los secrets de la keystore para que ningún otro workflow pueda usarlos.
+    environment: release
     steps:
       - uses: actions/checkout@v4
 

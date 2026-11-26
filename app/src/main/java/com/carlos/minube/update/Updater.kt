@@ -277,8 +277,9 @@ class Updater(private val act: ComponentActivity) {
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(act.packageName)
             setSize(f.length())
-            // A partir de la 2.ª actualización, Android 12+ puede no pedir confirmación (Mi Nube ya es quien la instaló)
-            if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+            // Seguridad: Android SIEMPRE pide confirmación antes de instalar (nunca USER_ACTION_NOT_REQUIRED).
+            // Así, aunque alguien publicara una versión falsa, no se instalaría sola.
+            if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
         }
         val id = pi.createSession(params)
         pi.openSession(id).use { s ->

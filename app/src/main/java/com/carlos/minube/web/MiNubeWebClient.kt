@@ -12,6 +12,18 @@ import android.webkit.WebViewClient
 /** Navegación de la web: lo del servidor se queda dentro; los enlaces externos se abren fuera. */
 class MiNubeWebClient(private val host: String?, private val l: Listener) : WebViewClient() {
 
+    /** true solo si la página principal cargada es https://<nuestro servidor>. La lee el puente JS (otro hilo). */
+    @Volatile
+    var enServidor = false
+        private set
+
+    private fun marcar(url: String?) {
+        val u = url?.let { Uri.parse(it) }
+        enServidor = u != null && host != null && u.scheme == "https" && u.host.equals(host, ignoreCase = true)
+    }
+
+    override fun doUpdateVisitedHistory(view: WebView, url: String?, isReload: Boolean) = marcar(url)
+
     interface Listener {
         fun onPaginaEmpieza()
         fun onPaginaTerminada()
@@ -30,7 +42,10 @@ class MiNubeWebClient(private val host: String?, private val l: Listener) : WebV
         return true
     }
 
-    override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) = l.onPaginaEmpieza()
+    override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
+        marcar(url)
+        l.onPaginaEmpieza()
+    }
 
     override fun onPageFinished(view: WebView, url: String?) = l.onPaginaTerminada()
 
