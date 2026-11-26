@@ -90,8 +90,10 @@ class MainActivity : ComponentActivity(), MiNubeWebClient.Listener, MiNubeChrome
         private const val TIMEOUT_CARGA_MS = 25_000L
 
         /** Margen para que el túnel de Tailscale acabe de enrutar antes de dar la conexión por fallida. */
-        private const val MARGEN_TUNEL_MS = 8_000L
-        private val ESPERAS_TUNEL_MS = longArrayOf(500, 1000, 2000, 3000)
+        private const val MARGEN_TUNEL_MS = 20_000L
+        private val ESPERAS_TUNEL_MS = longArrayOf(500, 1000, 1500, 2000)
+        private const val REINTENTOS_WEB = 2          // recargas automáticas si la web falla justo tras conectar
+        private const val ASENTAR_TRAS_ERROR_MS = 400L // pausa antes de la entrada animada si se llega desde un error
 
         /** Token y fuente: contrato window.MiNube (v6); si no existe, las variables globales de la v5. */
         private const val JS_SESION = """(function(){try{
@@ -141,6 +143,8 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
     private var errorPrincipal = false
     private var mostrandoError = false
     private var primeraConexion = true
+    private var reintentosWeb = 0
+    private var vieneDeError = false      // se mostró el error: la entrada animada espera un momento a que todo se asiente
     private var yaRevelada = false        // la entrada animada ya se hizo: tras un error se vuelve a la web sin repetirla
     private var desdeTailscale = false    // se salió a Tailscale: al volver, la VPN puede tardar un poco en figurar activa
     private val despertar = Channel<Unit>(Channel.CONFLATED)   // «Reintentar» durante la espera entre intentos
@@ -431,6 +435,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
             if (manual) despertar.trySend(Unit)
             return
         }
+        if (manual) reintentosWeb = 0
         despertar.tryReceive()                       // descarta un despertar viejo
         if (mostrandoError) mostrarComprobando(true) else mostrarConectando()
         comprobando = lifecycleScope.launch {
@@ -438,7 +443,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
             var intento = 0
             var e: Estado
             while (true) {
-                e = Connectivity.comprobar(this@MainActivity, serverUrl)
+                e = Connectivity.comprobar(this@MainActivity, serverUrl, if (intento == 0) 2500 else 4000)
                 val tunelEnCamino = e == Estado.SERVIDOR_NO_RESPONDE || (e == Estado.TAILSCALE_APAGADO && desdeTailscale)
                 val espera = ESPERAS_TUNEL_MS[minOf(intento, ESPERAS_TUNEL_MS.size - 1)]
                 if (e == Estado.OK || !tunelEnCamino || SystemClock.elapsedRealtime() - inicio + espera > MARGEN_TUNEL_MS) break
@@ -475,6 +480,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
         errorPrincipal = false
         // no-cache: revalida el HTML para ver al momento lo último subido al servidor (miniaturas, etc. siguen en caché)
         web.loadUrl("$serverUrl/", mapOf("Cache-Control" to "no-cache"))
+        if (conexion.visibility == View.VISIBLE) { web.alpha = 0.01f; web.visibility = View.VISIBLE }   // se calienta ya, tapada por la conexión
         timeoutCarga?.cancel()
         timeoutCarga = lifecycleScope.launch {
             delay(TIMEOUT_CARGA_MS)
@@ -506,6 +512,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
     override fun onPaginaTerminada() {
         if (errorPrincipal) return
         webLista = true
+        reintentosWeb = 0
         timeoutCarga?.cancel()
         enviarInsets()
         if (!mostrandoError) mostrarWeb()
@@ -516,6 +523,12 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
         errorPrincipal = true
         webLista = false
         timeoutCarga?.cancel()
+        // Recién conectado el túnel, la primera carga puede fallar aunque la comprobación diera OK: se reintenta sola
+        if (reintentosWeb < REINTENTOS_WEB && comprobando?.isActive != true) {
+            reintentosWeb++
+            comprobarYCargar()
+            return
+        }
         diagnosticarYMostrar()
     }
 
@@ -631,7 +644,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
         conexion.alpha = 1f; conexionSpinner.visibility = View.VISIBLE
         conexionPanel.animate().cancel(); conexionPanel.visibility = View.GONE
         conexion.visibility = View.GONE
-        if (revelando) yaRevelada = true
+        if (revelando) { yaRevelada = true; vieneDeError = false }
         revelando = false; preparando = false
     }
 
@@ -641,6 +654,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
      */
     private fun mostrarError(e: Estado) {
         mostrandoError = true
+        vieneDeError = true
         latido?.cancel(); latido = null
         conexionTexto.removeCallbacks(avisoLento)
         conexion.animate().cancel(); conexionFondo.animate().cancel(); conexionLogo.animate().cancel()
@@ -686,8 +700,14 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
 
     private fun mostrarWeb() {
         mostrandoError = false
-        conexionPanel.animate().cancel(); conexionPanel.visibility = View.GONE
-        if (conexion.visibility != View.VISIBLE) { web.alpha = 1f; web.visibility = View.VISIBLE; yaRevelada = true; return }
+        conexionPanel.animate().cancel()
+        if (conexion.visibility != View.VISIBLE) { conexionPanel.visibility = View.GONE; web.alpha = 1f; web.visibility = View.VISIBLE; yaRevelada = true; return }
+        if (!yaRevelada && conexionPanel.visibility == View.VISIBLE) {
+            // Primera entrada tras un error: el panel se funde mientras la web se calienta (no se quita de golpe)
+            conexionPanel.animate().alpha(0f).setStartDelay(0).setDuration(150).withEndAction { conexionPanel.visibility = View.GONE }.start()
+        } else {
+            conexionPanel.visibility = View.GONE
+        }
         if (yaRevelada) {
             // Vuelve tras un error (la entrada animada ya se hizo): la pantalla de conexión se funde y aparece la web
             web.alpha = 1f; web.visibility = View.VISIBLE
@@ -709,7 +729,20 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
         preparando = true
         web.alpha = 0.01f                       // casi invisible, pero el WebView sí compone
         web.visibility = View.VISIBLE
-        val listo = Runnable { if (preparando) { preparando = false; revelarWeb() } }
+        var asentando = false
+        lateinit var listo: Runnable
+        listo = Runnable {
+            if (preparando && !asentando) {
+                if (vieneDeError) {
+                    // Llegando desde el error (túnel recién activado, red y WebView aún ocupados) se deja un momento
+                    // para que el primer fotograma y las cargas pendientes no caigan a mitad de la animación
+                    asentando = true
+                    web.postDelayed({ if (preparando) { preparando = false; revelarWeb() } }, ASENTAR_TRAS_ERROR_MS)
+                } else {
+                    preparando = false; revelarWeb()
+                }
+            }
+        }
         web.postDelayed(listo, 700)
         if (Build.VERSION.SDK_INT >= 23) {
             web.postVisualStateCallback(1L, object : WebView.VisualStateCallback() {
@@ -729,6 +762,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
     private fun revelarWeb() {
         if (revelando) return
         revelando = true
+        conexionPanel.animate().cancel(); conexionPanel.visibility = View.GONE
         latido?.cancel(); latido = null
         conexionTexto.removeCallbacks(avisoLento)
         conexionSpinner.animate().cancel(); conexionSpinner.animate().alpha(0f).setStartDelay(0).setDuration(140).start()

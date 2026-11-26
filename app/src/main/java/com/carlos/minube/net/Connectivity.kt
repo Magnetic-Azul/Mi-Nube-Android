@@ -16,10 +16,10 @@ object Connectivity {
 
     enum class Estado { OK, SIN_CONFIG, SIN_INTERNET, TAILSCALE_NO_INSTALADO, TAILSCALE_APAGADO, SERVIDOR_NO_RESPONDE }
 
-    suspend fun comprobar(ctx: Context, serverUrl: String): Estado = withContext(Dispatchers.IO) {
+    suspend fun comprobar(ctx: Context, serverUrl: String, timeoutMs: Int = 2500): Estado = withContext(Dispatchers.IO) {
         when {
             serverUrl.isBlank() -> Estado.SIN_CONFIG
-            servidorResponde(serverUrl) -> Estado.OK
+            servidorResponde(serverUrl, timeoutMs) -> Estado.OK
             !hayInternet(ctx) -> Estado.SIN_INTERNET
             !tailscaleInstalado(ctx) -> Estado.TAILSCALE_NO_INSTALADO
             !vpnActiva(ctx) -> Estado.TAILSCALE_APAGADO
@@ -28,16 +28,16 @@ object Connectivity {
     }
 
     /**
-     * HEAD a la página principal con 2,5 s de margen para conectar y 2,5 s para responder (con Tailscale recién activado
+     * HEAD a la página principal con `timeoutMs` (2,5 s por defecto) para conectar y otro tanto para responder (con Tailscale recién activado
      * la conexión TCP puede abrirse y la respuesta quedarse colgada). Cualquier respuesta < 500 significa que nginx contesta.
      */
-    fun servidorResponde(serverUrl: String): Boolean {
+    fun servidorResponde(serverUrl: String, timeoutMs: Int = 2500): Boolean {
         var c: HttpURLConnection? = null
         return try {
             c = (URL("$serverUrl/").openConnection() as HttpURLConnection).apply {
                 requestMethod = "HEAD"
-                connectTimeout = 2500
-                readTimeout = 2500
+                connectTimeout = timeoutMs
+                readTimeout = timeoutMs
                 useCaches = false
                 instanceFollowRedirects = true
             }
