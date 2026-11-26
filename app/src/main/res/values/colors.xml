@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="acento">#2F6FDB</color>
-    <color name="fondo">#EBEBEB</color>   <!-- igual que el fondo de la web: la pantalla de conexión y la web no cambian de color -->
-    <!-- La pantalla de entrada de la web es SIEMPRE clara (aunque el sistema esté en oscuro): splash, conexión y logo también,
-         para que al entrar no se alternen los colores. -->
+    <!-- La pantalla de entrada de la web es SIEMPRE clara (aunque el sistema esté en oscuro): splash, conexión, error y logo
+         también (texto, texto_suave y boton no tienen variante nocturna), para que nunca se alternen los colores. -->
     <color name="entrada_fondo">#EBEBEB</color>
+    <color name="boton">#2F6FDB</color>
     <color name="entrada_texto">#5A5A5A</color>
     <color name="logo_fondo">#161616</color>
     <color name="logo_trazo">#FFFFFF</color>

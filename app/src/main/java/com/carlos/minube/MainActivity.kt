@@ -9,7 +9,6 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.graphics.Color
 import android.net.ConnectivityManager
 import android.net.Network
@@ -28,7 +27,6 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.widget.Button
 import android.widget.FrameLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -65,8 +63,10 @@ import com.carlos.minube.web.MiNubeChromeClient
 import com.carlos.minube.web.MiNubeWebClient
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.transformWhile
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -88,6 +88,10 @@ class MainActivity : ComponentActivity(), MiNubeWebClient.Listener, MiNubeChrome
 
         private const val RECOMPROBAR_TRAS_MS = 5 * 60_000L
         private const val TIMEOUT_CARGA_MS = 25_000L
+
+        /** Margen para que el túnel de Tailscale acabe de enrutar antes de dar la conexión por fallida. */
+        private const val MARGEN_TUNEL_MS = 8_000L
+        private val ESPERAS_TUNEL_MS = longArrayOf(500, 1000, 2000, 3000)
 
         /** Token y fuente: contrato window.MiNube (v6); si no existe, las variables globales de la v5. */
         private const val JS_SESION = """(function(){try{
@@ -113,10 +117,11 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
 
     private lateinit var root: FrameLayout
     private lateinit var web: WebView
-    private lateinit var gate: View
     private lateinit var gateTitulo: TextView
-    private lateinit var gateProgreso: ProgressBar
     private lateinit var conexion: View
+    private lateinit var conexionPanel: View
+    private lateinit var conexionScroll: View
+    private lateinit var reintentarSpinner: View
     private lateinit var conexionFondo: View
     private lateinit var conexionLogo: View
     private lateinit var conexionSpinner: View
@@ -129,12 +134,16 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
     private lateinit var shareBar: TextView
     private lateinit var fullscreen: FrameLayout
     private lateinit var updater: Updater
+    private lateinit var webClient: MiNubeWebClient
 
     private var webCargada = false        // se ha pedido cargar la web al menos una vez
     private var webLista = false          // la web terminó de cargar sin error
     private var errorPrincipal = false
     private var mostrandoError = false
     private var primeraConexion = true
+    private var yaRevelada = false        // la entrada animada ya se hizo: tras un error se vuelve a la web sin repetirla
+    private var desdeTailscale = false    // se salió a Tailscale: al volver, la VPN puede tardar un poco en figurar activa
+    private val despertar = Channel<Unit>(Channel.CONFLATED)   // «Reintentar» durante la espera entre intentos
     private var revelando = false
     private var preparando = false
     private var latido: ObjectAnimator? = null
@@ -192,10 +201,11 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
 
         root = findViewById(R.id.root)
         web = findViewById(R.id.web)
-        gate = findViewById(R.id.gate)
         gateTitulo = findViewById(R.id.gateTitulo)
-        gateProgreso = findViewById(R.id.gateProgreso)
         conexion = findViewById(R.id.conexion)
+        conexionPanel = findViewById(R.id.conexionPanel)
+        conexionScroll = findViewById(R.id.conexionScroll)
+        reintentarSpinner = findViewById(R.id.reintentarSpinner)
         conexionFondo = findViewById(R.id.conexionFondo)
         conexionLogo = findViewById(R.id.conexionLogo)
         conexionSpinner = findViewById(R.id.conexionSpinner)
@@ -220,7 +230,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
         }
         configurarWebView()
 
-        btnReintentar.setOnClickListener { comprobarYCargar() }
+        btnReintentar.setOnClickListener { comprobarYCargar(manual = true) }
         btnTailscale.setOnClickListener { abrirTailscale() }
         btnActualizar.setOnClickListener { updater.comprobar(manual = true) }
         shareBar.setOnClickListener { shareBar.visibility = View.GONE }
@@ -263,7 +273,17 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
         when {
             mostrandoError -> comprobarYCargar()                         // p. ej. al volver de Tailscale
             webLista && fuera > RECOMPROBAR_TRAS_MS -> verificarSinTapar()
+            !webLista && comprobando?.isActive != true -> {              // la comprobación se cortó en onStop
+                if (!webCargada) comprobarYCargar() else if (errorPrincipal) diagnosticarYMostrar()
+            }
         }
+    }
+
+    override fun onStop() {
+        // Nada de peticiones en segundo plano: si se sale de la app mientras reintenta, se corta y los botones quedan normales
+        comprobando?.cancel(); comprobando = null
+        if (mostrandoError) mostrarComprobando(false)
+        super.onStop()
     }
 
     override fun onPause() {
@@ -317,10 +337,11 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
             userAgentString = "$userAgentString MiNubeApp/${BuildConfig.VERSION_NAME}"
         }
         web.addJavascriptInterface(Puente(), "MiNubeAndroid")
-        web.webViewClient = MiNubeWebClient(serverHost, this)
+        webClient = MiNubeWebClient(serverHost, this)
+        web.webViewClient = webClient
         web.webChromeClient = MiNubeChromeClient(this)
         web.setDownloadListener { url, ua, cd, mime, _ ->
-            val accion = { if (Downloads.iniciar(this, url, ua, cd, mime) == null) toast(getString(R.string.descarga_fallo)) }
+            val accion = { if (Downloads.iniciar(this, url, ua, cd, mime, serverHost) == null) toast(getString(R.string.descarga_fallo)) }
             if (Build.VERSION.SDK_INT < 29 &&
                 ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
             ) {
@@ -338,8 +359,11 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
      * y solo se atiende si la página cargada es la de nuestro servidor.
      */
     private inner class Puente {
+        /** El puente solo atiende a nuestra propia web (no a otras páginas que pudieran cargarse). */
+        private val ok get() = webClient.enServidor
+
         @JavascriptInterface
-        fun version(): String = BuildConfig.VERSION_NAME
+        fun version(): String = if (ok) BuildConfig.VERSION_NAME else ""
 
         /**
          * Teclado a la orden de la web. En un WebView, ocultar o desenfocar un campo desde JS no siempre cierra el teclado
@@ -347,6 +371,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
          */
         @JavascriptInterface
         fun teclado(mostrar: Boolean) {
+            if (!ok) return
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 val imm = getSystemService(InputMethodManager::class.java)
@@ -362,24 +387,26 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
 
         /** La web, al verlo, deja su entrada preparada para que la app la dispare con MiNubeEntrada(). */
         @JavascriptInterface
-        fun entrada(): Boolean = true
+        fun entrada(): Boolean = ok
 
         /** «arriba,abajo» en px CSS: la web lo lee al arrancar para no dar un salto antes de onPageFinished. */
         @JavascriptInterface
-        fun insets(): String = "$insetArriba,$insetAbajo"
+        fun insets(): String = if (ok) "$insetArriba,$insetAbajo" else "0,0"
 
         /** Persona recordada («Recordar a X»): se guarda aquí y no solo en el localStorage del WebView, que puede perderse. */
         @JavascriptInterface
-        fun persona(): String = getSharedPreferences("minube", MODE_PRIVATE).getString("persona", "") ?: ""
+        fun persona(): String = if (!ok) "" else getSharedPreferences("minube", MODE_PRIVATE).getString("persona", "") ?: ""
 
         @JavascriptInterface
         fun guardarPersona(id: String) {
+            if (!ok) return
             val limpio = id.take(40).filter { it.isLetterOrDigit() || it == '_' || it == '-' }
             getSharedPreferences("minube", MODE_PRIVATE).edit { putString("persona", limpio) }
         }
 
         @JavascriptInterface
         fun buscarActualizaciones() {
+            if (!ok) return
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 val host = web.url?.let { Uri.parse(it).host }
@@ -390,13 +417,48 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
         }
     }
 
-    private fun comprobarYCargar() {
-        comprobando?.cancel()
-        mostrarConectando()
+    /**
+     * Comprueba la conexión y, si responde, carga la web. Solo hay una comprobación a la vez: los avisos automáticos
+     * (onResume, red disponible) se ignoran si ya hay una en marcha, y un «Reintentar» manual despierta la espera
+     * entre intentos para lanzar el siguiente al instante (sin duplicar corrutinas).
+     *
+     * Si Tailscale va por buen camino pero el túnel aún no enruta (servidor sin respuesta, o VPN que tarda en figurar
+     * activa tras volver de Tailscale) se reintenta unos 8 s antes de dar el error. Si ya se está mostrando el error,
+     * no se cambia de pantalla: solo el botón pasa a «Comprobando…».
+     */
+    private fun comprobarYCargar(manual: Boolean = false) {
+        if (comprobando?.isActive == true) {
+            if (manual) despertar.trySend(Unit)
+            return
+        }
+        despertar.tryReceive()                       // descarta un despertar viejo
+        if (mostrandoError) mostrarComprobando(true) else mostrarConectando()
         comprobando = lifecycleScope.launch {
-            val e = Connectivity.comprobar(this@MainActivity, serverUrl)
+            val inicio = SystemClock.elapsedRealtime()
+            var intento = 0
+            var e: Estado
+            while (true) {
+                e = Connectivity.comprobar(this@MainActivity, serverUrl)
+                val tunelEnCamino = e == Estado.SERVIDOR_NO_RESPONDE || (e == Estado.TAILSCALE_APAGADO && desdeTailscale)
+                val espera = ESPERAS_TUNEL_MS[minOf(intento, ESPERAS_TUNEL_MS.size - 1)]
+                if (e == Estado.OK || !tunelEnCamino || SystemClock.elapsedRealtime() - inicio + espera > MARGEN_TUNEL_MS) break
+                mostrarComprobando(true, puedeReintentar = true)   // durante la espera, Reintentar adelanta el siguiente intento
+                withTimeoutOrNull(espera) { despertar.receive() }
+                mostrarComprobando(true)
+                intento++
+            }
+            desdeTailscale = false
             if (e == Estado.OK) cargarWeb() else mostrarError(e)
         }
+    }
+
+    /** Botón «Reintentar» del panel de error: «Comprobando…» con indicador mientras hay una comprobación. */
+    private fun mostrarComprobando(activo: Boolean, puedeReintentar: Boolean = false) {
+        if (!mostrandoError) return
+        btnReintentar.setText(if (activo) R.string.btn_comprobando else R.string.btn_reintentar)
+        btnReintentar.isEnabled = !activo || puedeReintentar
+        btnReintentar.alpha = if (activo) 0.85f else 1f
+        reintentarSpinner.visibility = if (activo) View.VISIBLE else View.GONE
     }
 
     private fun cargarWeb() {
@@ -521,7 +583,8 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
     private fun mostrarConectando() {
         mostrandoError = false
         if (webLista) return                       // la web ya está a la vista: no se tapa
-        gate.visibility = View.GONE
+        conexionPanel.animate().cancel(); conexionPanel.visibility = View.GONE
+        conexionSpinner.visibility = View.VISIBLE
         if (conexion.visibility == View.VISIBLE && !revelando && latido != null) return   // ya se está mostrando
         revelando = false
         conexion.animate().cancel(); conexionFondo.animate().cancel(); conexionLogo.animate().cancel(); conexionSpinner.animate().cancel(); conexionTexto.animate().cancel()
@@ -559,17 +622,38 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
         conexion.animate().cancel(); conexionFondo.animate().cancel(); conexionLogo.animate().cancel(); conexionSpinner.animate().cancel(); conexionTexto.animate().cancel()
         web.alpha = 1f
         conexion.alpha = 1f; conexionSpinner.visibility = View.VISIBLE
+        conexionPanel.animate().cancel(); conexionPanel.visibility = View.GONE
         conexion.visibility = View.GONE
+        if (revelando) yaRevelada = true
         revelando = false; preparando = false
     }
 
+    /**
+     * Error: NO se cambia de pantalla. Se queda la de conexión (mismo fondo claro, mismo logo, quieto) y bajo el logo
+     * aparece el panel con el mensaje y los botones. Así no hay destellos entre claro y oscuro al reintentar.
+     */
     private fun mostrarError(e: Estado) {
         mostrandoError = true
-        quitarConexion()
-        gate.visibility = View.VISIBLE
+        latido?.cancel(); latido = null
+        conexionTexto.removeCallbacks(avisoLento)
+        conexion.animate().cancel(); conexionFondo.animate().cancel(); conexionLogo.animate().cancel()
+        conexionSpinner.animate().cancel(); conexionTexto.animate().cancel()
+        conexion.visibility = View.VISIBLE
+        conexion.alpha = 1f; conexionFondo.alpha = 1f
+        conexionLogo.translationY = 0f; conexionLogo.scaleX = 1f; conexionLogo.scaleY = 1f; conexionLogo.alpha = 1f
+        conexionSpinner.visibility = View.GONE; conexionSpinner.alpha = 0f
+        conexionTexto.alpha = 0f
+        revelando = false; preparando = false
         web.visibility = View.INVISIBLE
+        web.alpha = 1f
+        if (conexionPanel.visibility != View.VISIBLE) {
+            conexionScroll.scrollTo(0, 0)
+            conexionPanel.alpha = 0f
+            conexionPanel.visibility = View.VISIBLE
+            conexionPanel.animate().alpha(1f).setStartDelay(0).setDuration(220).start()
+        }
+        mostrarComprobando(false)
         gateTitulo.setText(R.string.gate_titulo_error)
-        gateProgreso.visibility = View.GONE
         gateMensaje.visibility = View.VISIBLE
         gateMensaje.setText(
             when (e) {
@@ -580,27 +664,30 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
                 Estado.SERVIDOR_NO_RESPONDE, Estado.OK -> R.string.gate_servidor
             }
         )
-        btnReintentar.visibility = View.VISIBLE
         val conTailscale = e == Estado.TAILSCALE_NO_INSTALADO || e == Estado.TAILSCALE_APAGADO || e == Estado.SERVIDOR_NO_RESPONDE
         btnTailscale.visibility = if (conTailscale) View.VISIBLE else View.GONE
         btnTailscale.setText(if (e == Estado.TAILSCALE_NO_INSTALADO) R.string.btn_instalar_tailscale else R.string.btn_abrir_tailscale)
-        btnActualizar.visibility = View.VISIBLE
-        gateVersion.visibility = View.VISIBLE
-        root.setBackgroundColor(getColor(R.color.fondo))
-        // Iconos de las barras del sistema legibles sobre el fondo de la pantalla de diagnóstico
-        // (no sobre el último color que tenía la web). colorActual = 0 obliga a recalcularlo al volver a la web.
+        // La pantalla es siempre clara: iconos oscuros en las barras del sistema, sea cual sea el tema del móvil.
+        // colorActual = 0 obliga a recalcular el color de la web cuando vuelva.
+        root.setBackgroundColor(getColor(R.color.entrada_fondo))
         colorActual = 0
-        val noche = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         WindowCompat.getInsetsController(window, window.decorView).apply {
-            isAppearanceLightStatusBars = !noche
-            isAppearanceLightNavigationBars = !noche
+            isAppearanceLightStatusBars = true
+            isAppearanceLightNavigationBars = true
         }
     }
 
     private fun mostrarWeb() {
         mostrandoError = false
-        gate.visibility = View.GONE
-        if (conexion.visibility != View.VISIBLE) { web.alpha = 1f; web.visibility = View.VISIBLE; return }
+        conexionPanel.animate().cancel(); conexionPanel.visibility = View.GONE
+        if (conexion.visibility != View.VISIBLE) { web.alpha = 1f; web.visibility = View.VISIBLE; yaRevelada = true; return }
+        if (yaRevelada) {
+            // Vuelve tras un error (la entrada animada ya se hizo): la pantalla de conexión se funde y aparece la web
+            web.alpha = 1f; web.visibility = View.VISIBLE
+            conexion.animate().cancel()
+            conexion.animate().alpha(0f).setDuration(220).withEndAction { if (!mostrandoError) { quitarConexion(); sincronizarColor() } }.start()
+            return
+        }
         prepararYRevelar()
     }
 
@@ -671,6 +758,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
     private fun abrirTailscale() {
         val i = packageManager.getLaunchIntentForPackage(Connectivity.TAILSCALE_PKG)
         if (i != null) {
+            desdeTailscale = true                  // al volver, la VPN puede tardar en figurar activa: se reintenta unos segundos
             startActivity(i); return
         }
         try {
@@ -702,7 +790,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
             // en horizontal) y el teclado siguen como padding: el teclado nunca tapa el buscador ni los campos.
             v.setPadding(barras.left, 0, barras.right, teclado)
             val abajo = if (teclado > 0) 0 else barras.bottom
-            gate.setPadding(0, barras.top, 0, abajo)
+            conexionScroll.setPadding(0, 0, 0, abajo)   // el panel de error no pisa la barra de gestos (el logo no se mueve)
             (shareBar.layoutParams as ViewGroup.MarginLayoutParams).topMargin = margenBarra + barras.top
             shareBar.requestLayout()
             val d = resources.displayMetrics.density
@@ -759,7 +847,7 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
                     val s = leerSesion()
                     if (s != null) {
                         loteEsperando = null
-                        encolarSubida(lote, s.first, s.second)
+                        confirmarSubida(lote, s.first, s.second)
                         return@launch
                     }
                 }
@@ -776,6 +864,24 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
         val token = a.optString(0).takeIf { it.isNotBlank() && it != "null" } ?: return null
         val source = a.optString(1).ifBlank { UploadWorker.SOURCE_POR_DEFECTO }
         return token to source
+    }
+
+    /** Nada se sube sin que la persona lo confirme (cualquier app puede usar el menú Compartir). */
+    private fun confirmarSubida(lote: String, token: String, source: String) {
+        val n = com.carlos.minube.share.ShareCache.archivos(this, lote).size
+        if (n == 0 || isFinishing || isDestroyed) { shareBar.visibility = View.GONE; return }
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.share_label)
+            .setMessage(resources.getQuantityString(R.plurals.share_confirmar, n, n))
+            .setPositiveButton(R.string.share_confirmar_si) { _, _ -> encolarSubida(lote, token, source) }
+            .setNegativeButton(R.string.share_confirmar_no) { _, _ -> descartarLote(lote) }
+            .setOnCancelListener { descartarLote(lote) }
+            .show()
+    }
+
+    private fun descartarLote(lote: String) {
+        com.carlos.minube.share.ShareCache.borrarLote(this, lote)
+        mostrarBarra(getString(R.string.share_cancelado), 4000)
     }
 
     private fun encolarSubida(lote: String, token: String, source: String) {

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Botón secundario en píldora, solo con borde -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="#1A2F6FDB">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#00000000" />
+            <stroke android:width="2dp" android:color="@color/boton" />
+            <corners android:radius="28dp" />
+        </shape>
+    </item>
+</ripple>

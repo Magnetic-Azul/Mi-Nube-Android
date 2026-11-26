@@ -27,14 +27,17 @@ object Connectivity {
         }
     }
 
-    /** HEAD a la página principal con 5 s de margen. Cualquier respuesta < 500 significa que nginx contesta. */
+    /**
+     * HEAD a la página principal con 2,5 s de margen para conectar y 2,5 s para responder (con Tailscale recién activado
+     * la conexión TCP puede abrirse y la respuesta quedarse colgada). Cualquier respuesta < 500 significa que nginx contesta.
+     */
     fun servidorResponde(serverUrl: String): Boolean {
         var c: HttpURLConnection? = null
         return try {
             c = (URL("$serverUrl/").openConnection() as HttpURLConnection).apply {
                 requestMethod = "HEAD"
-                connectTimeout = 5000
-                readTimeout = 5000
+                connectTimeout = 2500
+                readTimeout = 2500
                 useCaches = false
                 instanceFollowRedirects = true
             }

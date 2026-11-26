@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Raíz a pantalla completa: solo recibe como padding los lados y el teclado; la web se dibuja bajo las barras
-     del sistema y la puerta y la tarjeta de compartir se apartan de ellas (ver MainActivity.aplicarInsets) -->
+     del sistema y la pantalla de conexión y la tarjeta de compartir se apartan de ellas (ver MainActivity.aplicarInsets) -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
     android:layout_width="match_parent"
@@ -13,95 +13,10 @@
         android:layout_height="match_parent"
         android:visibility="invisible" />
 
-    <!-- Puerta de conexión / diagnóstico -->
-    <ScrollView
-        android:id="@+id/gate"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@color/fondo"
-        android:fillViewport="true"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:padding="32dp">
-
-            <ImageView
-                android:layout_width="96dp"
-                android:layout_height="96dp"
-                android:contentDescription="@null"
-                android:src="@mipmap/ic_launcher" />
-
-            <TextView
-                android:id="@+id/gateTitulo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:gravity="center"
-                android:text="@string/gate_conectando"
-                android:textColor="@color/texto"
-                android:textSize="24sp"
-                android:textStyle="bold" />
-
-            <ProgressBar
-                android:id="@+id/gateProgreso"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_marginTop="24dp" />
-
-            <TextView
-                android:id="@+id/gateMensaje"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:gravity="center"
-                android:lineSpacingMultiplier="1.15"
-                android:textColor="@color/texto_suave"
-                android:textSize="19sp"
-                android:visibility="gone" />
-
-            <Button
-                android:id="@+id/btnReintentar"
-                style="@style/MiNube.Boton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:text="@string/btn_reintentar"
-                android:visibility="gone" />
-
-            <Button
-                android:id="@+id/btnTailscale"
-                style="@style/MiNube.Boton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/btn_abrir_tailscale"
-                android:visibility="gone" />
-
-            <Button
-                android:id="@+id/btnActualizar"
-                style="@style/MiNube.BotonSecundario"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:text="@string/btn_buscar_actualizacion"
-                android:visibility="gone" />
-
-            <TextView
-                android:id="@+id/gateVersion"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:textColor="@color/texto_suave"
-                android:textSize="14sp"
-                android:visibility="gone" />
-        </LinearLayout>
-    </ScrollView>
-
-    <!-- Conexión: el logo quieto en el centro (el mismo del splash); el indicador solo aparece si tarda.
-         Al terminar, el logo viaja hasta su sitio en la web y el fondo se funde (MainActivity.revelarWeb). -->
+    <!-- Conexión y diagnóstico en UNA sola pantalla (siempre clara, como la entrada de la web): el logo quieto en el centro
+         (el mismo del splash). Mientras conecta se ve el indicador; si falla, bajo el mismo logo aparece el panel con el
+         mensaje y los botones, sin cambiar de pantalla ni de color. Al terminar, el logo viaja hasta su sitio en la web
+         y el fondo se funde (MainActivity.revelarWeb). -->
     <FrameLayout
         android:id="@+id/conexion"
         android:layout_width="match_parent"
@@ -142,6 +57,111 @@
             android:textColor="@color/entrada_texto"
             android:textSize="16sp"
             android:translationY="138dp" />
+
+        <!-- Panel de error: los huecos con peso dejan el logo (que vive en el centro de la pantalla) exactamente donde está
+             y el contenido empieza justo debajo de él -->
+        <LinearLayout
+            android:id="@+id/conexionPanel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="96dp" />
+
+            <ScrollView
+                android:id="@+id/conexionScroll"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:overScrollMode="ifContentScrolls">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="32dp"
+                    android:paddingTop="20dp"
+                    android:paddingBottom="16dp">
+
+                    <TextView
+                        android:id="@+id/gateTitulo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:text="@string/gate_titulo_error"
+                        android:textColor="@color/texto"
+                        android:textSize="22sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/gateMensaje"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:gravity="center"
+                        android:lineSpacingMultiplier="1.15"
+                        android:textColor="@color/texto_suave"
+                        android:textSize="17sp" />
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="28dp">
+
+                        <Button
+                            android:id="@+id/btnReintentar"
+                            style="@style/MiNube.Boton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="0dp"
+                            android:text="@string/btn_reintentar" />
+
+                        <ProgressBar
+                            android:id="@+id/reintentarSpinner"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center_vertical|end"
+                            android:layout_marginEnd="22dp"
+                            android:indeterminateTint="#FFFFFF"
+                            android:visibility="gone" />
+                    </FrameLayout>
+
+                    <Button
+                        android:id="@+id/btnTailscale"
+                        style="@style/MiNube.BotonBorde"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/btn_abrir_tailscale"
+                        android:visibility="gone" />
+
+                    <Button
+                        android:id="@+id/btnActualizar"
+                        style="@style/MiNube.BotonSecundario"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:text="@string/btn_buscar_actualizacion" />
+
+                    <TextView
+                        android:id="@+id/gateVersion"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center"
+                        android:textColor="@color/texto_suave"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </ScrollView>
+        </LinearLayout>
     </FrameLayout>
 
     <!-- Tarjeta flotante de lo compartido («Guardando 2 de 5…»), arriba para no tapar la navegación inferior de la web.

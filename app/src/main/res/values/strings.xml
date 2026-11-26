@@ -6,7 +6,7 @@
     <string name="share_label">Guardar en Mi Nube</string>
 
     <!-- Puerta de conexión -->
-    <string name="gate_conectando">Conectando con Mi Nube…</string>
+    <string name="btn_comprobando">Comprobando…</string>
     <string name="gate_titulo_error">No se puede abrir Mi Nube</string>
     <string name="gate_sin_config">Esta versión de la app no tiene configurada la dirección del servidor. Avisa a Carlos.</string>
     <string name="gate_sin_internet">El móvil no tiene conexión a internet.\n\nActiva el wifi o los datos móviles y pulsa «Reintentar».</string>
@@ -34,6 +34,13 @@
         <item quantity="other">Entra en tu carpeta para guardar %1$d archivos en «Recibidos».</item>
     </plurals>
     <string name="share_subiendo">Guardando %1$d de %2$d en «Recibidos»…</string>
+    <plurals name="share_confirmar">
+        <item quantity="one">¿Guardar %1$d archivo en la carpeta «Recibidos»?</item>
+        <item quantity="other">¿Guardar %1$d archivos en la carpeta «Recibidos»?</item>
+    </plurals>
+    <string name="share_confirmar_si">Guardar</string>
+    <string name="share_confirmar_no">Cancelar</string>
+    <string name="share_cancelado">No se ha guardado nada.</string>
     <string name="share_ok">✓ Guardado en la carpeta «Recibidos»</string>
     <string name="share_error">No se pudieron guardar: %1$s</string>
     <string name="notif_canal_subidas">Subidas a Mi Nube</string>
