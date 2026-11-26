@@ -643,6 +643,17 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
         }
     }
 
+    /**
+     * La web deja su entrada PAUSADA (MiNubeEntrada) y la arranca esta llamada, justo al retirar la pantalla de conexión.
+     * Así el viaje del logo empieza siempre a la vez que se descubre la web, tarde lo que tarde el WebView en confirmar
+     * que está listo (si no, el reloj de la animación avanzaba mientras la conexión seguía tapando y se perdía el principio).
+     * Con una web antigua, sin MiNubeVuela, no hace nada.
+     */
+    private fun soltarYQuitar() {
+        web.evaluateJavascript("(window.MiNubeVuela?MiNubeVuela():0)", null)
+        quitarConexion()
+    }
+
     private fun quitarConexion() {
         latido?.cancel(); latido = null
         conexionTexto.removeCallbacks(avisoLento)
@@ -805,12 +816,12 @@ var d2=rgba(getComputedStyle(document.documentElement).backgroundColor||'#fff');
                     // El aviso del WebView dice que su estado está listo, pero el logo nuevo puede no estar aún rasterizado en la GPU:
                     // se deja la conexión 140 ms más (el logo de la web está debajo, en el mismo sitio y quieto, y no empieza a moverse
                     // hasta los 260 ms) para que el relevo no deje un fotograma sin logo.
-                    val salvaguarda = Runnable { if (revelando) quitarConexion() }
+                    val salvaguarda = Runnable { if (revelando) soltarYQuitar() }
                     web.postDelayed(salvaguarda, 600)
                     web.postVisualStateCallback(2L, object : WebView.VisualStateCallback() {
                         override fun onComplete(requestId: Long) {
                             web.removeCallbacks(salvaguarda)
-                            web.postDelayed({ if (revelando) quitarConexion() }, 140)
+                            web.postDelayed({ if (revelando) soltarYQuitar() }, 140)
                         }
                     })
                 } else {
